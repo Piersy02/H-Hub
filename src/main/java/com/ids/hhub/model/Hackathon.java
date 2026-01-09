@@ -1,6 +1,6 @@
 package com.ids.hhub.model;
 
-import com.ids.hhub.model.enums.HackathonState;
+import com.ids.hhub.model.enums.HackathonStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -27,7 +27,7 @@ public class Hackathon {
     private double prizeAmount;
 
     @Enumerated(EnumType.STRING)
-    private HackathonState state = HackathonState.REGISTRATION_OPEN;
+    private HackathonStatus state = HackathonStatus.REGISTRATION_OPEN;
 
     // Team iscritti a questo hackathon
     @OneToMany(mappedBy = "hackathon")
