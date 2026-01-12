@@ -1,10 +1,12 @@
 package com.ids.hhub.model;
 
 import com.ids.hhub.model.enums.HackathonStatus;
+import com.ids.hhub.model.state.HackathonState;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
+import com.ids.hhub.model.state.*;
 
 @Entity
 @Data
@@ -40,4 +42,25 @@ public class Hackathon {
     // Vincitore (solo quando concluso)
     @OneToOne
     private Team winner;
+
+    // Metodo che restituisce l'oggetto Stato corretto in base all'Enum salvato nel DB
+    public HackathonState getCurrentStateObject() {
+        switch (this.state) { // 'state' è l'Enum
+            case REGISTRATION_OPEN:
+                return new RegistrationOpenState();
+            case ONGOING:
+                return new OngoingState();
+            case EVALUATION:
+                return new EvaluationState();
+            case FINISHED:
+                return new FinishedState();
+            default:
+                throw new IllegalArgumentException("Stato sconosciuto: " + this.state);
+        }
+    }
+
+    // Metodo delegato: L'Hackathon non fa il lavoro, lo passa allo State (pattern)
+    public void registerTeam(Team team) {
+        getCurrentStateObject().registerTeam(this, team);
+    }
 }
