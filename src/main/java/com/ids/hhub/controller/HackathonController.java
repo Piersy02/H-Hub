@@ -1,10 +1,12 @@
 package com.ids.hhub.controller;
 
+import com.ids.hhub.dto.AddStaffDto;
 import com.ids.hhub.dto.CreateHackathonDto;
 import com.ids.hhub.model.Hackathon;
 import com.ids.hhub.service.HackathonService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,15 +18,42 @@ public class HackathonController {
     @Autowired
     private HackathonService hackathonService;
 
-    // Accessibile a tutti
+    // 1. LISTA COMPLETA (Pubblico)
     @GetMapping
     public ResponseEntity<List<Hackathon>> getAll() {
         return ResponseEntity.ok(hackathonService.getAllHackathons());
     }
 
-    // Accessibile solo a Organizzatore/Admin
+    // 2. DETTAGLIO SINGOLO HACKATHON (Pubblico)
+    @GetMapping("/{id}")
+    public ResponseEntity<Hackathon> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(hackathonService.getHackathonById(id));
+    }
+
+    // 3. CREAZIONE HACKATHON (Solo Utenti Loggati che siano ADMIN o EVENT_CREATOR)
     @PostMapping
-    public ResponseEntity<Hackathon> create(@RequestBody CreateHackathonDto dto) {
-        return ResponseEntity.ok(hackathonService.createHackathon(dto));
+    public ResponseEntity<Hackathon> create(
+            @RequestBody CreateHackathonDto dto,
+            Authentication authentication // Spring Security inietta l'utente loggato qui
+    ) {
+        // 1. Prendi l'email dal token di login
+        String emailOrganizer = authentication.getName();
+
+        // Passiamo l'email al service invece dell'ID
+        return ResponseEntity.ok(hackathonService.createHackathon(dto, emailOrganizer));
+    }
+
+    // 4. AGGIUNTA STAFF (Solo Organizzatore)
+    @PostMapping("/{id}/staff")
+    public ResponseEntity<String> addStaff(
+            @PathVariable Long id,
+            @RequestBody AddStaffDto dto,
+            Authentication authentication   // Spring Security inietta l'utente loggato qui
+    ) {
+        String emailRichiedente = authentication.getName();
+
+        hackathonService.addStaffMember(id, dto, emailRichiedente);
+
+        return ResponseEntity.ok("Membro dello staff aggiunto con successo!");
     }
 }
