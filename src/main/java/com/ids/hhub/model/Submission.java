@@ -1,9 +1,12 @@
 package com.ids.hhub.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 import java.time.LocalDateTime;
-import java.util.List;
+
 
 @Entity
 @Data
@@ -18,9 +21,15 @@ public class Submission {
     private LocalDateTime submissionDate;
 
     @OneToOne
-    @JoinColumn(name = "team_id")
+    @JoinColumn(name = "team_id", nullable = false)
+    @JsonIgnore
     private Team team;
 
-    @OneToMany(mappedBy = "submission")
-    private List<Evaluation> evaluations;
+    public Submission(String projectUrl, String description, Team team) {
+        this.projectUrl = projectUrl;
+        this.description = description;
+        this.team = team;
+        this.submissionDate = LocalDateTime.now();
+
+    }
 }

@@ -1,5 +1,6 @@
 package com.ids.hhub.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -15,8 +16,11 @@ public class Evaluation {
     private String comment;
 
     @ManyToOne
+    @JoinColumn(name = "submission_id")
+    @JsonIgnore
     private Submission submission;
 
     @ManyToOne
+    @JoinColumn(name = "judge_id")
     private User judge; // Il giudice che ha votato
 }
