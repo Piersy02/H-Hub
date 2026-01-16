@@ -48,7 +48,7 @@ public class Hackathon {
 
     // Metodo che restituisce l'oggetto Stato corretto in base all'Enum salvato nel DB
     public HackathonState getCurrentStateObject() {
-        switch (this.status) { // 'state' è l'Enum
+        switch (this.status) { // 'status' è l'Enum
             case REGISTRATION_OPEN:
                 return new RegistrationOpenState();
             case ONGOING:

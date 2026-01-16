@@ -49,7 +49,7 @@ public class HackathonService {
         h.setPrizeAmount(dto.getPrizeAmount());
 
         // Imposta lo stato iniziale
-        h.setState(HackathonStatus.REGISTRATION_OPEN);
+        h.setStatus(HackathonStatus.REGISTRATION_OPEN);
 
         // Salva per generare l'ID
         h = hackathonRepo.save(h);
@@ -121,7 +121,7 @@ public class HackathonService {
         if (!isOrganizer) throw new SecurityException("Solo l'organizzatore può chiudere l'evento.");
 
         // Controllo Stato (Deve essere in Valutazione)
-        if (h.getState() != HackathonStatus.EVALUATION) {
+        if (h.getStatus() != HackathonStatus.EVALUATION) {
             throw new IllegalStateException("L'hackathon deve essere in fase di valutazione per chiudere.");
         }
 
@@ -157,7 +157,7 @@ public class HackathonService {
 
         // CHIUSURA
         h.setWinner(winner);
-        h.setState(HackathonStatus.FINISHED); // Cambia stato nel DB
+        h.setStatus(HackathonStatus.FINISHED); // Cambia stato nel DB
         hackathonRepo.save(h);
 
         return winner;
