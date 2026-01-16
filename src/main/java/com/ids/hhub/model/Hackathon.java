@@ -31,7 +31,7 @@ public class Hackathon {
     private double prizeAmount;
 
     @Enumerated(EnumType.STRING)
-    private HackathonStatus state = HackathonStatus.REGISTRATION_OPEN;
+    private HackathonStatus status = HackathonStatus.REGISTRATION_OPEN;
 
     // Team iscritti a questo hackathon
     @OneToMany(mappedBy = "hackathon")
@@ -48,7 +48,7 @@ public class Hackathon {
 
     // Metodo che restituisce l'oggetto Stato corretto in base all'Enum salvato nel DB
     public HackathonState getCurrentStateObject() {
-        switch (this.state) { // 'state' è l'Enum
+        switch (this.status) { // 'state' è l'Enum
             case REGISTRATION_OPEN:
                 return new RegistrationOpenState();
             case ONGOING:
@@ -58,7 +58,7 @@ public class Hackathon {
             case FINISHED:
                 return new FinishedState();
             default:
-                throw new IllegalArgumentException("Stato sconosciuto: " + this.state);
+                throw new IllegalArgumentException("Stato sconosciuto: " + this.status);
         }
     }
 
