@@ -1,5 +1,6 @@
 package com.ids.hhub.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.ids.hhub.model.enums.HackathonStatus;
 import com.ids.hhub.model.state.HackathonState;
 import jakarta.persistence.*;
@@ -17,6 +18,7 @@ public class Hackathon {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false, unique = true)
     private String name;
     private String description;
     private String rules;
@@ -39,8 +41,9 @@ public class Hackathon {
     @OneToMany(mappedBy = "hackathon", cascade = CascadeType.ALL)
     private List<StaffAssignment> staff;
 
-    // Vincitore (solo quando concluso)
     @OneToOne
+    @JoinColumn(name = "winner_team_id")
+    @JsonIgnoreProperties({"hackathon", "members", "submission"}) // Mostra solo nome e ID del team vincente
     private Team winner;
 
     // Metodo che restituisce l'oggetto Stato corretto in base all'Enum salvato nel DB
