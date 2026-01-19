@@ -1,5 +1,7 @@
 package com.ids.hhub.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.ids.hhub.model.enums.HackathonStatus;
 import com.ids.hhub.model.state.HackathonState;
 import jakarta.persistence.*;
@@ -33,6 +35,7 @@ public class Hackathon {
 
     // Team iscritti a questo hackathon
     @OneToMany(mappedBy = "hackathon")
+    @JsonIgnoreProperties("hackathon")
     private List<Team> teams;
 
     // Staff assegnato (Organizzatore, Giudici, Mentori)
@@ -44,6 +47,7 @@ public class Hackathon {
     private Team winner;
 
     // Metodo che restituisce l'oggetto Stato corretto in base all'Enum salvato nel DB
+    @JsonIgnore
     public HackathonState getCurrentStateObject() {
         switch (this.state) { // 'state' è l'Enum
             case REGISTRATION_OPEN:
