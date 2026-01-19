@@ -1,5 +1,7 @@
 package com.ids.hhub.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.ids.hhub.model.enums.StaffRole;
 import jakarta.persistence.*;
 import lombok.*;
@@ -15,10 +17,13 @@ public class StaffAssignment {
 
     @ManyToOne
     @JoinColumn(name = "user_id")
+    @JsonIgnoreProperties({"password", "email", "id", "platformRole", "staffAssignments", "team", "currentTeam", "createdAt"})
     private User user;
 
     @ManyToOne
     @JoinColumn(name = "hackathon_id")
+    @JsonIgnore
+    @ToString.Exclude
     private Hackathon hackathon;
 
     @Enumerated(EnumType.STRING)

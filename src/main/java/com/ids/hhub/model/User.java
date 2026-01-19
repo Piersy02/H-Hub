@@ -25,7 +25,10 @@ public class User {
     @Enumerated(EnumType.STRING)
     private PlatformRole platformRole = PlatformRole.USER;
 
+
     // Lista dei ruoli staff (es. Giudice nell'Hackathon A, Mentore nel B)
+    @JsonIgnore  //
+    @ToString.Exclude
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<StaffAssignment> staffAssignments;
 
