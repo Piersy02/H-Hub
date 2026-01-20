@@ -12,6 +12,7 @@ public class CreateHackathonDto {
 
     // Campi aggiuntivi richiesti dal progetto
     private String rules;
+    private String location;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")// Regolamento
     private LocalDateTime registrationDeadline; // Scadenza iscrizioni
     private int maxTeamSize;                // Dimensione massima team
