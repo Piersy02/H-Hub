@@ -5,6 +5,7 @@ import com.ids.hhub.dto.ChangeStatusDto;
 import com.ids.hhub.dto.CreateHackathonDto;
 import com.ids.hhub.model.Hackathon;
 import com.ids.hhub.model.Team;
+import com.ids.hhub.model.ViolationReport;
 import com.ids.hhub.service.HackathonService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -77,5 +78,14 @@ public class HackathonController {
     ) {
         hackathonService.changeHackathonStatus(id, dto.getNewStatus(), auth.getName());
         return ResponseEntity.ok("Stato aggiornato con successo a " + dto.getNewStatus());
+    }
+
+    // GET /api/hackathons/{id}/reports
+    @GetMapping("/{id}/reports")
+    public ResponseEntity<List<ViolationReport>> getReports(
+            @PathVariable Long id,
+            Authentication auth
+    ) {
+        return ResponseEntity.ok(hackathonService.getViolationReports(id, auth.getName()));
     }
 }
