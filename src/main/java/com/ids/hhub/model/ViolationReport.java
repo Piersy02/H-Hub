@@ -1,5 +1,6 @@
 package com.ids.hhub.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -17,17 +18,17 @@ public class ViolationReport {
 
     @ManyToOne
     @JoinColumn(name = "team_id")
-    @JsonIgnoreProperties("members")
+    @JsonIgnoreProperties({"members", "hackathon", "submission", "leader"}) // Mostra solo nome e ID del team
     private Team reportedTeam;
 
     @ManyToOne
     @JoinColumn(name = "mentor_id")
-    @JsonIgnoreProperties("staffAssignments")
+    @JsonIgnoreProperties({"password", "id", "platformRole", "staffAssignments", "team"}) // Mostra solo nome e cognome ed email del mentore
     private User mentor; // Chi ha fatto la segnalazione
 
     @ManyToOne
     @JoinColumn(name = "hackathon_id")
-    @JsonIgnoreProperties("teams")
+    @JsonIgnore
     private Hackathon hackathon;
 
     public ViolationReport(String description, Team reportedTeam, User mentor, Hackathon hackathon) {
