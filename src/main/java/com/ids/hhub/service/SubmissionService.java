@@ -27,6 +27,12 @@ public class SubmissionService {
 
         team.getHackathon().getCurrentStateObject().submitProject(team.getHackathon(), team);
 
+        // CONTROLLO SCADENZA TEMPORALE
+        Hackathon h = team.getHackathon();
+        if (LocalDateTime.now().isAfter(h.getEndDate())) {
+            throw new RuntimeException("Tempo scaduto! La deadline per la consegna è passata.");
+        }
+
         Submission submission = team.getSubmission();
         if (submission == null) {
             submission = new Submission(url, desc, team);
