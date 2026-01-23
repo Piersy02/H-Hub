@@ -11,8 +11,10 @@ import com.ids.hhub.service.external.PaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.jspecify.annotations.NonNull;
 
 import java.util.List;
+import java.util.ArrayList;
 
 @Service
 public class HackathonService {
@@ -48,7 +50,60 @@ public class HackathonService {
         StaffAssignment assignment = new StaffAssignment(organizer, h, StaffRole.ORGANIZER);
         staffRepo.save(assignment);
 
+
+        if (dto.getJudgeId() != null) {
+            // Evita che l'organizzatore si assegni anche come giudice (conflitto ruoli)
+            if (dto.getJudgeId().equals(organizer.getId())) {
+                throw new RuntimeException("L'organizzatore non può essere anche Giudice!");
+            }
+
+            User judge = userRepo.findById(dto.getJudgeId())
+                    .orElseThrow(() -> new RuntimeException("Giudice non trovato con ID: " + dto.getJudgeId()));
+
+            StaffAssignment judgeAssignment = new StaffAssignment(judge, h, StaffRole.JUDGE);
+            staffRepo.save(judgeAssignment);
+        }
+
+
+        if (dto.getMentorIds() != null && !dto.getMentorIds().isEmpty()) {
+            for (Long mentorId : dto.getMentorIds()) {
+                // Evita duplicati o conflitti con l'organizzatore
+                if (mentorId.equals(organizer.getId())) continue; // Salta se stesso
+                if (dto.getJudgeId() != null && mentorId.equals(dto.getJudgeId())) continue; // Salta se è già giudice
+
+                User mentor = userRepo.findById(mentorId)
+                        .orElseThrow(() -> new RuntimeException("Mentore non trovato con ID: " + mentorId));
+
+
+                if (!staffRepo.existsByUserIdAndHackathonId(mentor.getId(), h.getId())) {
+                    StaffAssignment mentorAssignment = new StaffAssignment(mentor, h, StaffRole.MENTOR);
+                    staffRepo.save(mentorAssignment);
+                }
+            }
+        }
         return h;
+    }
+
+    public List<Submission> getSubmissionsForHackathon(Long hackathonId, String requesterEmail) {
+        Hackathon h = hackathonRepo.findById(hackathonId).orElseThrow();
+        User requester = userRepo.findByEmail(requesterEmail).orElseThrow();
+
+        // Controllo: Sei Giudice o Organizzatore?
+        boolean isStaff = staffRepo.existsByUserIdAndHackathonId(requester.getId(), hackathonId);
+        // Nota: qui potresti essere più specifico (solo JUDGE o ORGANIZER)
+
+        if (!isStaff && requester.getPlatformRole() != PlatformRole.ADMIN) {
+            throw new SecurityException("Solo lo staff può vedere le sottomissioni prima della fine.");
+        }
+
+        // Recupera tutte le sottomissioni dei team di questo hackathon
+        List<Submission> submissions = new ArrayList<>();
+        for (Team t : h.getTeams()) {
+            if (t.getSubmission() != null) {
+                submissions.add(t.getSubmission());
+            }
+        }
+        return submissions;
     }
 
     // --- 2. GESTIONE STAFF ---
@@ -71,9 +126,16 @@ public class HackathonService {
         User targetUser = userRepo.findById(dto.getUserId())
                 .orElseThrow(() -> new RuntimeException("Utente target non trovato"));
 
-        // Evita duplicati
-        if (staffRepo.existsByUserIdAndHackathonIdAndRole(targetUser.getId(), hackathonId, dto.getRole())) {
-            throw new RuntimeException("L'utente ha già questo ruolo in questo hackathon!");
+        // Verifica se l'utente è già presente nello staff di questo hackathon (con QUALSIASI ruolo)
+        if (staffRepo.findByUserIdAndHackathonId(dto.getUserId(), hackathonId).isPresent()) {
+            throw new RuntimeException("L'utente fa già parte dello staff di questo hackathon! Non può avere due ruoli o essere aggiunto due volte.");
+
+        }
+        if (dto.getRole() == StaffRole.JUDGE) {
+            long existingJudges = staffRepo.countByHackathonIdAndRole(hackathonId, StaffRole.JUDGE);
+            if (existingJudges >= 1) {
+                throw new RuntimeException("IMPOSSIBILE: Esiste già un Giudice per questo Hackathon. Il regolamento ne prevede solo uno.");
+            }
         }
 
         StaffAssignment assignment = new StaffAssignment(targetUser, hackathon, dto.getRole());
@@ -83,10 +145,11 @@ public class HackathonService {
     // --- 3. CAMBIO STATO (Manuale) ---
     @Transactional
     public void changeHackathonStatus(Long hackathonId, HackathonStatus newStatus, String requesterEmail) {
+        // 1. Recupera Hackathon e Organizzatore
         Hackathon h = getHackathonById(hackathonId);
         User requester = userRepo.findByEmail(requesterEmail).orElseThrow();
 
-        // Controllo Permessi
+        // 2. Controllo Permessi (Solo Organizzatore)
         boolean isOrganizer = staffRepo.existsByUserIdAndHackathonIdAndRole(
                 requester.getId(), h.getId(), StaffRole.ORGANIZER);
         boolean isAdmin = requester.getPlatformRole() == PlatformRole.ADMIN;
@@ -109,7 +172,12 @@ public class HackathonService {
         // Controllo Permessi
         boolean isOrganizer = staffRepo.existsByUserIdAndHackathonIdAndRole(
                 organizer.getId(), h.getId(), StaffRole.ORGANIZER);
-        if (!isOrganizer) throw new SecurityException("Solo l'organizzatore può chiudere l'evento.");
+        // Nota: Anche l'Admin dovrebbe poter chiudere in caso di emergenza
+        boolean isAdmin = organizer.getPlatformRole() == PlatformRole.ADMIN;
+
+        if (!isOrganizer && !isAdmin) {
+            throw new SecurityException("Solo l'organizzatore può chiudere l'evento.");
+        };
 
         // Controllo Stato
         if (h.getStatus() != HackathonStatus.EVALUATION) {
@@ -150,6 +218,35 @@ public class HackathonService {
         h.setStatus(HackathonStatus.FINISHED);
         hackathonRepo.save(h);
 
+        return winner;
+    }
+
+    private static @NonNull Team getWinner(Hackathon h) {
+        Team winner = null;
+        int maxScore = -1; // Partiamo da -1 così anche 0 è valido
+
+        for (Team team : h.getTeams()) {
+            Submission sub = team.getSubmission();
+
+            // Controlliamo se c'è una sottomissione e se il giudice l'ha votata
+            if (sub != null && !sub.getEvaluations().isEmpty()) {
+
+                // PRENDIAMO L'UNICO VOTO DISPONIBILE
+                // Poiché c'è un solo giudice, la lista avrà size() == 1
+                Evaluation eval = sub.getEvaluations().getFirst();
+                int score = eval.getScore();
+
+                // Logica "Re della collina": se trovo un voto più alto, lui è il nuovo vincitore
+                if (score > maxScore) {
+                    maxScore = score;
+                    winner = team;
+                }
+            }
+        }
+
+        if (winner == null) {
+            throw new RuntimeException("Impossibile proclamare un vincitore: Nessun team ha ricevuto valutazioni!");
+        }
         return winner;
     }
 

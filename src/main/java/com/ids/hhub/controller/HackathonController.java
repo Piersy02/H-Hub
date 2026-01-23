@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import com.ids.hhub.model.Submission;
 
 import java.util.List;
 
@@ -99,5 +100,13 @@ public class HackathonController {
             Authentication auth
     ) {
         return ResponseEntity.ok(hackathonService.getViolationReports(id, auth.getName()));
+    }
+    @GetMapping("/{id}/submissions")
+    public ResponseEntity<List<Submission>> getSubmissionsForJudge(
+            @PathVariable Long id,
+            Authentication auth
+    ) {
+        // Deleghiamo al service (devi creare il metodo se non c'è)
+        return ResponseEntity.ok(hackathonService.getSubmissionsForHackathon(id, auth.getName()));
     }
 }

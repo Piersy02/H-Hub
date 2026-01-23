@@ -33,7 +33,7 @@ public class Submission {
 
     @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JsonIgnore // Evita che quando stampi la submission ti stampi infinite valutazioni
-    private List<Evaluation> evaluations = new ArrayList<>(); // Inizializzala per evitare NullPointerException
+    private List<Evaluation> evaluations = new ArrayList<Evaluation>(); // Inizializzala per evitare NullPointerException
 
 
     public Submission(String projectUrl, String description, Team team) {

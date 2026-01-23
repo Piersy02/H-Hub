@@ -12,4 +12,9 @@ public interface StaffAssignmentRepository extends JpaRepository<StaffAssignment
 
     // Trova l'oggetto assegnazione completo (Utile per sapere CHE ruolo ha l'utente)
     Optional<StaffAssignment> findByUserIdAndHackathonId(Long userId, Long hackathonId);
+
+    boolean existsByUserIdAndHackathonId(Long userId, Long hackathonId);
+
+    // Conta quanti staff con quel ruolo ci sono nell'hackathon
+    long countByHackathonIdAndRole(Long hackathonId, StaffRole role);
 }
