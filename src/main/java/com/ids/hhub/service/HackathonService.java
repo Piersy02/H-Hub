@@ -2,6 +2,8 @@ package com.ids.hhub.service;
 
 import com.ids.hhub.dto.AddStaffDto;
 import com.ids.hhub.dto.CreateHackathonDto;
+import com.ids.hhub.dto.HackathonPublicDto;
+import com.ids.hhub.dto.HackathonStaffDto;
 import com.ids.hhub.model.*;
 import com.ids.hhub.model.enums.HackathonStatus;
 import com.ids.hhub.model.enums.PlatformRole;
@@ -287,6 +289,52 @@ public class HackathonService {
         h.setStatus(HackathonStatus.REGISTRATION_OPEN);
         return h;
     }
+    // Helper 8: Mappatura DTO
+    private HackathonPublicDto mapToPublicDto(Hackathon h) {
+        HackathonPublicDto dto = new HackathonPublicDto();
+        dto.setId(h.getId());
+        dto.setName(h.getName());
+        dto.setDescription(h.getDescription());
+        dto.setLocation(h.getLocation());
+        dto.setStatus(h.getStatus().toString());
+        dto.setStartDate(h.getStartDate());
+        dto.setEndDate(h.getEndDate());
+        dto.setRegistrationDeadline(h.getRegistrationDeadline());
+        dto.setMaxTeamSize(h.getMaxTeamSize());
+
+        if (h.getWinner() != null) {
+            dto.setWinnerTeamName(h.getWinner().getName());
+        }
+        return dto;
+    }
+
+    // Helper 9: Mappatura DTO
+    private HackathonStaffDto mapToStaffDto(Hackathon h) {
+        // Riutilizza il mapping pubblico per i campi base
+        HackathonPublicDto publicDto = mapToPublicDto(h);
+
+        HackathonStaffDto dto = new HackathonStaffDto();
+        // Copia campi base
+        dto.setId(publicDto.getId());
+        dto.setName(publicDto.getName());
+        dto.setDescription(publicDto.getDescription());
+        dto.setLocation(publicDto.getLocation());
+        dto.setStatus(publicDto.getStatus());
+        dto.setStartDate(publicDto.getStartDate());
+        dto.setEndDate(publicDto.getEndDate());
+        dto.setRegistrationDeadline(publicDto.getRegistrationDeadline());
+        dto.setMaxTeamSize(publicDto.getMaxTeamSize());
+        dto.setWinnerTeamName(publicDto.getWinnerTeamName());
+
+        // Aggiungi campi sensibili
+        dto.setPrizeAmount(h.getPrizeAmount());
+        dto.setRules(h.getRules());
+        dto.setFullStaffList(h.getStaff()); // Qui vedrà la lista completa
+        dto.setTotalTeamsRegistered(h.getTeams().size());
+
+        return dto;
+    }
+
 
     // Metodi pubblici di lettura
     public Hackathon getHackathonById(Long id) {
@@ -297,4 +345,55 @@ public class HackathonService {
     public List<Hackathon> getAllHackathons() {
         return hackathonRepo.findAll();
     }
+
+    // 1. PER TUTTI (Visitatori/Utenti) - Ritorna DTO Pubblico
+    public HackathonPublicDto getHackathonPublicDetails(Long id) {
+        Hackathon h = getHackathonById(id);
+        return mapToPublicDto(h);
+    }
+
+    // 2. PER LO STAFF (Organizzatore/Giudice/Mentore) - Ritorna DTO Completo
+    public HackathonStaffDto getHackathonStaffDetails(Long id, String requesterEmail) {
+        Hackathon h = getHackathonById(id);
+        User requester = getUserByEmail(requesterEmail);
+
+        // CONTROLLO SICUREZZA:
+        // L'utente deve essere STAFF di *questo* hackathon (o ADMIN)
+        boolean isStaff = staffRepo.existsByUserIdAndHackathonId(requester.getId(), id);
+        boolean isAdmin = requester.getPlatformRole() == PlatformRole.ADMIN;
+
+        if (!isStaff && !isAdmin) {
+            throw new SecurityException("Accesso Negato: Non fai parte dello staff di questo Hackathon.");
+        }
+
+        return mapToStaffDto(h);
+    }
+
+    // 3. LISTA PUBBLICA (Per la Home Page)
+    public List<HackathonPublicDto> getAllPublicHackathons() {
+        List<Hackathon> all = hackathonRepo.findAll();
+        List<HackathonPublicDto> dtos = new ArrayList<>();
+        for (Hackathon h : all) {
+            dtos.add(mapToPublicDto(h));
+        }
+        return dtos;
+    }
+
+    // 4. LISTA "I MIEI HACKATHON DI STAFF" (Dashboard Staff)
+    public List<HackathonStaffDto> getMyStaffHackathons(String userEmail) {
+        User user = getUserByEmail(userEmail);
+        List<HackathonStaffDto> dtos = new ArrayList<>();
+
+        // Recupera tutti gli hackathon
+        List<Hackathon> all = hackathonRepo.findAll();
+
+        for (Hackathon h : all) {
+            // Se sono staff di questo evento, lo aggiungo alla lista completa
+            if (staffRepo.existsByUserIdAndHackathonId(user.getId(), h.getId())) {
+                dtos.add(mapToStaffDto(h));
+            }
+        }
+        return dtos;
+    }
+
 }
