@@ -163,7 +163,7 @@ public class HackathonService {
         System.out.println("Team " + team.getName() + " squalificato.");
     }
 
-    // --- 7. VISUALIZZA SOTTOMISSIONI (Per Giudici/Staff) ---
+    // 7. VISUALIZZA SOTTOMISSIONI (Per Giudici/Staff) ---
     public List<Submission> getSubmissionsForHackathon(Long hackathonId, String requesterEmail) {
         User requester = getUserByEmail(requesterEmail);
 
@@ -296,6 +296,7 @@ public class HackathonService {
         dto.setName(h.getName());
         dto.setDescription(h.getDescription());
         dto.setLocation(h.getLocation());
+        dto.setRules(h.getRules());
         dto.setStatus(h.getStatus().toString());
         dto.setStartDate(h.getStartDate());
         dto.setEndDate(h.getEndDate());
@@ -319,6 +320,7 @@ public class HackathonService {
         dto.setName(publicDto.getName());
         dto.setDescription(publicDto.getDescription());
         dto.setLocation(publicDto.getLocation());
+        dto.setRules(publicDto.getRules());
         dto.setStatus(publicDto.getStatus());
         dto.setStartDate(publicDto.getStartDate());
         dto.setEndDate(publicDto.getEndDate());
@@ -328,7 +330,6 @@ public class HackathonService {
 
         // Aggiungi campi sensibili
         dto.setPrizeAmount(h.getPrizeAmount());
-        dto.setRules(h.getRules());
         dto.setFullStaffList(h.getStaff()); // Qui vedrà la lista completa
         dto.setTotalTeamsRegistered(h.getTeams().size());
 
@@ -340,10 +341,6 @@ public class HackathonService {
     public Hackathon getHackathonById(Long id) {
         return hackathonRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Hackathon non trovato con ID: " + id));
-    }
-
-    public List<Hackathon> getAllHackathons() {
-        return hackathonRepo.findAll();
     }
 
     // 1. PER TUTTI (Visitatori/Utenti) - Ritorna DTO Pubblico
