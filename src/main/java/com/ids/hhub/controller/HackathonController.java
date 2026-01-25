@@ -5,6 +5,8 @@ import com.ids.hhub.model.Hackathon;
 import com.ids.hhub.model.Team;
 import com.ids.hhub.model.ViolationReport;
 import com.ids.hhub.service.HackathonService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -15,61 +17,58 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/hackathons")
+@Tag(name = "Hackathon Management", description = "API per la gestione del ciclo di vita degli Hackathon")
 public class HackathonController {
 
     @Autowired
     private HackathonService hackathonService;
 
-    // CREAZIONE HACKATHON (Solo Utenti Loggati che siano ADMIN o EVENT_CREATOR)
-    @PostMapping
-    public ResponseEntity<Hackathon> create(
-            @RequestBody CreateHackathonDto dto,
-            Authentication authentication // Spring Security inietta l'utente loggato qui
-    ) {
-        // Prendi l'email dal token di login
-        String emailOrganizer = authentication.getName();
+    // =================================================================================
+    // SEZIONE 1: ENDPOINT PUBBLICI (Accessibili a tutti)
+    // =================================================================================
 
-        // Passiamo l'email al service invece dell'ID
-        return ResponseEntity.ok(hackathonService.createHackathon(dto, emailOrganizer));
+    @GetMapping
+    @Operation(summary = "Lista pubblica Hackathon", description = "Restituisce l'elenco di tutti gli hackathon con le sole informazioni pubbliche.")
+    public ResponseEntity<List<HackathonPublicDto>> getHomepageList() {
+        return ResponseEntity.ok(hackathonService.getAllPublicHackathons());
     }
 
-    // AGGIUNTA STAFF (Solo Organizzatore)
+    @GetMapping("/{id}")
+    @Operation(summary = "Dettaglio pubblico Hackathon", description = "Restituisce le informazioni pubbliche di un singolo hackathon.")
+    public ResponseEntity<HackathonPublicDto> getHackathonPublicInfo(@PathVariable Long id) {
+        return ResponseEntity.ok(hackathonService.getHackathonPublicDetails(id));
+    }
+
+    // =================================================================================
+    // SEZIONE 2: CREAZIONE (Solo EVENT_CREATOR o ADMIN)
+    // =================================================================================
+
+    @PostMapping
+    @Operation(summary = "Crea Hackathon", description = "Permette a un Event Creator o Admin di creare un nuovo evento. Chi crea diventa automaticamente Organizzatore.")
+    public ResponseEntity<Hackathon> create(
+            @RequestBody CreateHackathonDto dto,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(hackathonService.createHackathon(dto, authentication.getName()));
+    }
+
+    // =================================================================================
+    // SEZIONE 3: GESTIONE ORGANIZZATORE (Solo ORGANIZER o ADMIN)
+    // =================================================================================
+
     @PostMapping("/{id}/staff")
+    @Operation(summary = "Aggiungi Staff", description = "L'Organizzatore assegna ruoli (Mentore, Giudice, Co-Organizzatore) ad altri utenti.")
     public ResponseEntity<String> addStaff(
             @PathVariable Long id,
             @RequestBody AddStaffDto dto,
-            Authentication authentication   // Spring Security inietta l'utente loggato qui
+            Authentication authentication
     ) {
-        String emailRichiedente = authentication.getName();
-
-        hackathonService.addStaffMember(id, dto, emailRichiedente);
-
+        hackathonService.addStaffMember(id, dto, authentication.getName());
         return ResponseEntity.ok("Membro dello staff aggiunto con successo!");
     }
 
-    @PostMapping("/{id}/close")
-    public ResponseEntity<String> closeHackathon(
-            @PathVariable Long id,
-            Authentication auth
-    ) {
-        Team winner = hackathonService.proclaimWinner(id, auth.getName());
-        return ResponseEntity.ok("Hackathon concluso! Il vincitore è il team: " + winner.getName());
-    }
-
-    // POST /api/hackathons/{hackathonId}/teams/{teamId}/disqualify
-    @PostMapping("/{hackathonId}/teams/{teamId}/disqualify")
-    public ResponseEntity<String> disqualifyTeam(
-            @PathVariable Long hackathonId,
-            @PathVariable Long teamId,
-            Authentication auth
-    ) {
-        hackathonService.disqualifyTeam(hackathonId, teamId, auth.getName());
-        return ResponseEntity.ok("Team squalificato e rimosso dall'evento con successo.");
-    }
-
-
-    // PATCH /api/hackathons/{id}/status
     @PatchMapping("/{id}/status")
+    @Operation(summary = "Cambia Stato", description = "Modifica lo stato dell'Hackathon")
     public ResponseEntity<String> changeStatus(
             @PathVariable Long id,
             @RequestBody ChangeStatusDto dto,
@@ -79,39 +78,42 @@ public class HackathonController {
         return ResponseEntity.ok("Stato aggiornato con successo a " + dto.getNewStatus());
     }
 
-    // GET /api/hackathons/{id}/reports
+    @PostMapping("/{id}/close")
+    @Operation(summary = "Chiudi Hackathon e Proclama Vincitore", description = "Calcola il vincitore in base ai voti, effettua il pagamento e chiude l'evento.")
+    public ResponseEntity<String> closeHackathon(
+            @PathVariable Long id,
+            Authentication auth
+    ) {
+        Team winner = hackathonService.proclaimWinner(id, auth.getName());
+        return ResponseEntity.ok("Hackathon concluso! Il vincitore è il team: " + winner.getName());
+    }
+
+    @PostMapping("/{hackathonId}/teams/{teamId}/disqualify")
+    @Operation(summary = "Squalifica Team", description = "Rimuove forzatamente un team dall'hackathon")
+    public ResponseEntity<String> disqualifyTeam(
+            @PathVariable Long hackathonId,
+            @PathVariable Long teamId,
+            Authentication auth
+    ) {
+        hackathonService.disqualifyTeam(hackathonId, teamId, auth.getName());
+        return ResponseEntity.ok("Team squalificato e rimosso dall'evento con successo.");
+    }
+
     @GetMapping("/{id}/reports")
+    @Operation(summary = "Visualizza Segnalazioni", description = "L'Organizzatore visualizza le violazioni segnalate dai Mentori.")
     public ResponseEntity<List<ViolationReport>> getReports(
             @PathVariable Long id,
             Authentication auth
     ) {
         return ResponseEntity.ok(hackathonService.getViolationReports(id, auth.getName()));
     }
-    @GetMapping("/{id}/submissions")
-    public ResponseEntity<List<Submission>> getSubmissionsForJudge(
-            @PathVariable Long id,
-            Authentication auth
-    ) {
-        // Deleghiamo al service (devi creare il metodo se non c'è)
-        return ResponseEntity.ok(hackathonService.getSubmissionsForHackathon(id, auth.getName()));
-    }
 
-    // 1. SCHEDA EVENTO (PUBBLICA)
-    // CHI LO USA: Visitatori (non loggati) e Utenti normali.
-    // COSA FA: Mostra la "locandina" dell'evento.
-    // DATI MOSTRATI: Nome, Descrizione, Date, Luogo.
-    // DATI NASCOSTI: Budget, Regole interne, Email dello staff.
-    @GetMapping("/{id}")
-    public ResponseEntity<HackathonPublicDto> getHackathonPublicInfo(@PathVariable Long id) {
-        return ResponseEntity.ok(hackathonService.getHackathonPublicDetails(id));
-    }
+    // =================================================================================
+    // SEZIONE 4: DASHBOARD E OPERATIVITÀ STAFF (Giudici, Mentori, Org)
+    // =================================================================================
 
-    // 2. DASHBOARD DI GESTIONE (RISERVATA ALLO STAFF)
-    // CHI LO USA: Solo l'Organizzatore, il Giudice o il Mentore di *questo* specifico evento.
-    // COSA FA: Apre il pannello di controllo dell'evento.
-    // DATI MOSTRATI: Tutto (incluso Budget, Regole complete, Lista completa dello staff).
-    // SICUREZZA: Se provo ad accedere ma non sono staff, ricevo errore 403.
     @GetMapping("/{id}/dashboard")
+    @Operation(summary = "Dashboard Staff", description = "Restituisce tutte le informazioni (incluse quelle sensibili) per lo staff dell'evento singolo.")
     public ResponseEntity<HackathonStaffDto> getHackathonStaffInfo(
             @PathVariable Long id,
             Authentication auth
@@ -119,22 +121,18 @@ public class HackathonController {
         return ResponseEntity.ok(hackathonService.getHackathonStaffDetails(id, auth.getName()));
     }
 
-    // 3. HOME PAGE (LISTA HACKATHON)
-    // CHI LO USA: Chiunque apra la Home Page del sito.
-    // COSA FA: Restituisce l'elenco di tutti gli hackathon disponibili nel sistema.
-    // DATI MOSTRATI: Una lista di schede pubbliche (solo info base).
-    @GetMapping
-    public ResponseEntity<List<HackathonPublicDto>> getHomepageList() {
-        return ResponseEntity.ok(hackathonService.getAllPublicHackathons());
-    }
-
-    // 4. I MIEI LAVORI (AREA PERSONALE STAFF)
-    // CHI LO USA: Un utente loggato che fa parte dello staff in qualche evento.
-    // COSA FA: Risponde alla domanda "In quali hackathon sto lavorando?".
-    // ESEMPIO: Se Mario è Giudice nell'Hackathon A e Mentore nel B, vedrà una lista con A e B.
-    // DATI MOSTRATI: Lista di schede complete (StaffDto) perché è il suo lavoro.
     @GetMapping("/staff/me")
+    @Operation(summary = "I miei eventi Staff", description = "Restituisce la lista degli hackathon in cui l'utente loggato ha un ruolo di staff.")
     public ResponseEntity<List<HackathonStaffDto>> getMyWorkingEvents(Authentication auth) {
         return ResponseEntity.ok(hackathonService.getMyStaffHackathons(auth.getName()));
+    }
+
+    @GetMapping("/{id}/submissions")
+    @Operation(summary = "Visualizza Sottomissioni", description = "Permette ai membri dello staff di vedere i progetti consegnati dai team.")
+    public ResponseEntity<List<Submission>> getSubmissionsForJudge(
+            @PathVariable Long id,
+            Authentication auth
+    ) {
+        return ResponseEntity.ok(hackathonService.getSubmissionsForHackathon(id, auth.getName()));
     }
 }
