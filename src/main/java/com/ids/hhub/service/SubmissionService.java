@@ -11,8 +11,7 @@ import java.time.LocalDateTime;
 @Service
 public class SubmissionService {
 
-    @Autowired
-    private SubmissionRepository submissionRepo;
+    @Autowired private SubmissionRepository submissionRepo;
     @Autowired private TeamRepository teamRepo;
     @Autowired private UserRepository userRepo;
 
@@ -43,5 +42,53 @@ public class SubmissionService {
         }
 
         return submissionRepo.save(submission);
+    }
+
+    // --- NUOVO: VISUALIZZA SOTTOMISSIONE ---
+    public Submission getSubmissionByTeamId(Long teamId, String requesterEmail) {
+        Team team = teamRepo.findById(teamId)
+                .orElseThrow(() -> new RuntimeException("Team non trovato"));
+
+        User requester = userRepo.findByEmail(requesterEmail).orElseThrow();
+
+        // Controllo: Sei membro del team?
+        if (!team.getMembers().contains(requester)) {
+            throw new SecurityException("Solo i membri del team possono vedere la propria sottomissione.");
+        }
+
+        if (team.getSubmission() == null) {
+            throw new RuntimeException("Nessuna sottomissione trovata per questo team.");
+        }
+
+        return team.getSubmission();
+    }
+
+    // --- NUOVO: CANCELLA SOTTOMISSIONE ---
+    @Transactional
+    public void deleteSubmission(Long submissionId, String requesterEmail) {
+        Submission sub = submissionRepo.findById(submissionId)
+                .orElseThrow(() -> new RuntimeException("Sottomissione non trovata"));
+
+        User requester = userRepo.findByEmail(requesterEmail).orElseThrow();
+        Team team = sub.getTeam();
+
+        //  Sei membro del team?
+        if (!team.getMembers().contains(requester)) {
+            throw new SecurityException("Solo i membri del team possono cancellare la sottomissione.");
+        }
+
+        //  STATE PATTERN CHECK
+        // Possiamo cancellare solo se siamo ancora in ONGOING.
+        // Se siamo in EVALUATION o FINISHED, è troppo tardi.
+        try {
+            team.getHackathon().getCurrentStateObject().submitProject(team.getHackathon(), team);
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException("Impossibile ritirare il progetto: " + e.getMessage());
+        }
+
+        // Cancellazione
+        team.setSubmission(null); // Rimuovi riferimento lato Team
+        submissionRepo.delete(sub); // Cancella dal DB
+
     }
 }
