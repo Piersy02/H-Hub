@@ -41,4 +41,14 @@ public class AuthController {
         User user = authService.login(dto);
         return ResponseEntity.ok("Login effettuato con successo! ID Utente: " + user.getId());
     }
+
+    // =================================================================================
+    // SEZIONE 3: VERIFICA CREDENZIALI
+    // =================================================================================
+
+    @GetMapping("/verify-credentials")
+    @Operation(summary = "Verifica Credenziali (Swagger)", description = "Chiama questo endpoint dopo aver cliccato 'Authorize' su Swagger. Se restituisce 200, la password è corretta. Se restituisce 401, la password è sbagliata.")
+    public ResponseEntity<String> verifyCredentials(org.springframework.security.core.Authentication authentication) {
+        return ResponseEntity.ok("Credenziali corrette! Sei autenticato come: " + authentication.getName());
+    }
 }

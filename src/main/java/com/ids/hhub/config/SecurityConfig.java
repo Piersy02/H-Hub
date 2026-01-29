@@ -14,8 +14,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
-import static org.springframework.security.config.Customizer.withDefaults;
-
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -32,21 +30,29 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
+        // Definiamo un EntryPoint custom per evitare il popup "Basic Auth" del browser
+        org.springframework.security.web.AuthenticationEntryPoint customEntryPoint = (request, response, authException) -> {
+            response.setHeader("WWW-Authenticate", "FormBased");
+            response.setContentType("application/json");
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("{ \"error\": \"Non autorizzato. Effettua il login.\" }");
+        };
+
         http
                 // 1. Disabilita CSRF e Form Login
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
 
-                // 2. Abilita Basic Auth
-                .httpBasic(withDefaults())
+                // 2. Abilita Basic Auth con EntryPoint custom
+                .httpBasic(basic -> basic.authenticationEntryPoint(customEntryPoint))
 
                 // 3. GESTIONE ECCEZIONI (Risposte JSON invece di HTML o redirect)
+
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, authException) -> {
-                            response.setContentType("application/json");
-                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.getWriter().write("{ \"error\": \"Non autorizzato. Effettua il login.\" }");
-                        })
+                        // A. Se l'utente NON è loggato (401)
+                        .authenticationEntryPoint(customEntryPoint)
+                        // B. Se l'utente è loggato ma NON ha i permessi (403)
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             response.setContentType("application/json");
                             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
@@ -60,6 +66,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers("/error").permitAll()
 
                         // B. HACKATHON PUBBLICI (Solo Lettura)
                         .requestMatchers(HttpMethod.GET, "/api/hackathons").permitAll()      // Lista
