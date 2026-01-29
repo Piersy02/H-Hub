@@ -1,5 +1,7 @@
 package com.ids.hhub.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.ids.hhub.model.enums.InvitationStatus;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -16,10 +18,12 @@ public class TeamInvitation {
 
     @ManyToOne
     @JoinColumn(name = "team_id", nullable = false)
+    @JsonIgnoreProperties({"leader", "members", "submission", "hackathon"})
     private Team team; // Chi invia
 
     @ManyToOne
     @JoinColumn(name = "invitee_id", nullable = false)
+    @JsonIgnore
     private User invitee; // Chi riceve
 
     @Enumerated(EnumType.STRING)
